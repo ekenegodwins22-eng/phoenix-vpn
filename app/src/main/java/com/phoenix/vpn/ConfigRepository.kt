@@ -45,6 +45,18 @@ class ConfigRepository(context: Context) {
         }
     }
 
+    fun saveFeedServer(name:String,host:String,port:Int,type:String){
+        require(name.matches(Regex("[A-Za-z0-9 _.-]{1,48}"))) { "Use a simple profile name" }
+        require(host.isNotBlank() && port in 1..65535) { "Invalid server from feed" }
+        if(type.equals("wg+ssh",true)){
+            val content="# FEED PROFILE: replace both PLACEHOLDER keys and confirm server peer details before connecting.\n[Interface]\nPrivateKey = PLACEHOLDER_REPLACE_WITH_CLIENT_PRIVATE_KEY\nAddress = 10.13.13.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = PLACEHOLDER_REPLACE_WITH_SERVER_PUBLIC_KEY\nEndpoint = $host:51820\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n"
+            File(profiles,name.trim()+".conf").writeText(content)
+        }else{
+            val content=JSONObject().put("host",host).put("port",port).put("username","REPLACE_WITH_SSH_USERNAME").put("password","REPLACE_WITH_SSH_PASSWORD").put("payload","").put("sniffedHost","").put("protocol",TunnelProtocol.SSH_DIRECT.name).put("feedNote","Replace username and password before connecting").toString(2)
+            File(profiles,name.trim()+".ssh").writeText(content)
+        }
+    }
+
     fun importProfile(name: String, content: String) = saveProfile(name, content)
 
     fun deleteProfile(name: String): Boolean {
@@ -72,6 +84,8 @@ class ConfigRepository(context: Context) {
             o.put("payload", t.payload)
             o.put("sni", t.sni)
             o.put("active", t.active)
+            if(t.host!=null)o.put("host",t.host)
+            if(t.port!=null)o.put("port",t.port)
             arr.put(o)
         }
         tweaks.writeText(arr.toString(2))
