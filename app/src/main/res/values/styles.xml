@@ -1,3 +1,12 @@
 <resources>
-    <style name="Theme.PhoenixTunnel" parent="Theme.MaterialComponents.DayNight.NoActionBar"><item name="colorPrimary">#9B5DE5</item><item name="colorPrimaryVariant">#6F2DBD</item><item name="colorSecondary">#F15BB5</item><item name="android:fontFamily">sans</item><item name="android:windowLightStatusBar">false</item><item name="android:statusBarColor">#120B22</item><item name="android:navigationBarColor">#120B22</item><item name="android:windowBackground">#120B22</item></style>
+    <style name="Theme.PhoenixTunnel" parent="Theme.MaterialComponents.NoActionBar"><item name="colorPrimary">#9B5DE5</item><item name="colorPrimaryVariant">#6F2DBD</item><item name="colorSecondary">#F15BB5</item><item name="android:fontFamily">sans</item><item name="android:windowLightStatusBar">false</item><item name="android:statusBarColor">#120B22</item><item name="android:navigationBarColor">#120B22</item><item name="android:windowBackground">#120B22</item><item name="alertDialogTheme">@style/PhoenixDialog</item><item name="android:alertDialogTheme">@style/PhoenixDialog</item></style>
+    <style name="PhoenixDialog" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="android:windowBackground">#26183B</item>
+        <item name="colorSurface">#26183B</item>
+        <item name="android:colorBackground">#26183B</item>
+        <item name="colorOnSurface">#F3E8FF</item>
+        <item name="android:textColorPrimary">#F3E8FF</item>
+        <item name="android:textColor">#F3E8FF</item>
+        <item name="colorPrimary">#9B5DE5</item>
+    </style>
 </resources>
