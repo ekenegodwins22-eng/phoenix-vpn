@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.PhoenixTunnel" parent="Theme.MaterialComponents.DayNight.NoActionBar"><item name="colorPrimary">#9B5DE5</item><item name="colorPrimaryVariant">#6F2DBD</item><item name="colorSecondary">#F15BB5</item><item name="android:fontFamily">sans</item><item name="android:windowLightStatusBar">false</item><item name="android:statusBarColor">#120B22</item><item name="android:navigationBarColor">#120B22</item><item name="android:windowBackground">#120B22</item></style>
+</resources>

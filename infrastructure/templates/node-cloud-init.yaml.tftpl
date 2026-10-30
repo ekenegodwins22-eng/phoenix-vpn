@@ -1,0 +1,20 @@
+#cloud-config
+package_update: true
+packages:
+  - docker.io
+  - curl
+  - ca-certificates
+  - git
+write_files:
+  - path: /opt/phoenix-node/README.stub
+    permissions: '0644'
+    owner: root:root
+    content: |
+      Phoenix VPN relay node ${node_index}
+
+      TODO: pin and deploy the approved gost and udp2raw images/binaries here.
+      Do not expose a relay listener until its protocol, authentication, and upstream
+      server configuration have been set. Docker is installed and enabled.
+runcmd:
+  - [ systemctl, enable, --now, docker ]
+  - [ usermod, -aG, docker, ubuntu ]

@@ -1,0 +1,1 @@
+<resources><style name="Theme.PhoenixTunnel.Starting" parent="Theme.SplashScreen"><item name="windowSplashScreenBackground">#120B22</item><item name="windowSplashScreenAnimatedIcon">@drawable/phoenix_icon</item><item name="postSplashScreenTheme">@style/Theme.PhoenixTunnel</item></style></resources>

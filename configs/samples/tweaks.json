@@ -1,0 +1,5 @@
+[
+  {"name":"MTN payload template","protocol":"SSH > SSL/PAYLOAD","payload":"CONNECT [host] HTTP/1.1[crlf]Host: [host][crlf]User-Agent: [ua][crlf][crlf]","sni":"example.com","active":false},
+  {"name":"Airtel payload template","protocol":"SSH > SSL/TLS","payload":"[host][crlf]","sni":"example.com","active":false},
+  {"name":"Glo payload template","protocol":"SSH > DIRECT","payload":"CONNECT [host] HTTP/1.1[crlf]","active":false}
+]
