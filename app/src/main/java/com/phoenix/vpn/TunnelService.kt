@@ -12,7 +12,7 @@ import androidx.core.app.NotificationCompat
 import com.wireguard.android.backend.GoBackend
 import com.wireguard.android.backend.Tunnel
 import com.wireguard.config.Config
-import hev.htproxy.TProxyService
+import org.amnezia.awg.hevtunnel.TProxyService
 import java.io.ByteArrayInputStream
 import java.io.File
 

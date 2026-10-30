@@ -12,7 +12,7 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketException
-import java.net.SocketFactory
+import javax.net.SocketFactory
 import java.security.MessageDigest
 import java.util.Base64
 import java.util.concurrent.atomic.AtomicBoolean
@@ -79,7 +79,7 @@ class SshEngine(
                     transport.soTimeout = 0
                     return transport
                 } catch (e: Exception) {
-                    try { raw.close() } catch (_: Exception) { }
+                    try { raw?.close() } catch (_: Exception) { }
                     throw e
                 }
             }
@@ -141,7 +141,7 @@ class SshEngine(
             val address = when (request[3].toInt() and 0xff) {
                 1 -> ByteArray(4).also { readFully(input, it) }.joinToString(".") { (it.toInt() and 0xff).toString() }
                 3 -> { val len = input.read(); if (len < 0) return; ByteArray(len).also { readFully(input, it) }.toString(Charsets.UTF_8) }
-                4 -> ByteArray(16).also { readFully(input, it) }.joinToString(":") { "%02x%02x".format(it[0], it[1]) }
+                4 -> ByteArray(16).also { b -> readFully(input, b) }.joinToString(":") { "%02x".format(it) }
                 else -> return
             }
             val portBytes = ByteArray(2).also { readFully(input, it) }
@@ -223,6 +223,7 @@ class SshEngine(
             if (saved != fingerprint) log("SSH host key changed for $id, rejecting connection")
             return saved == fingerprint
         }
+        override fun findExistingAlgorithms(hostname: String, port: Int): MutableList<String> = mutableListOf()
     }
 
     companion object {
