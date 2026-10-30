@@ -87,9 +87,7 @@ class TunnelService : VpnService() {
             writeText(yaml)
         }
         addLog("Starting hev TUN-to-SOCKS bridge on 127.0.0.1:${engine.socksPort}")
-        if (!TProxyService.TProxyStartService(configFile.absolutePath, tun.fd)) {
-            throw IllegalStateException("hev-socks5-tunnel refused to start")
-        }
+        TProxyService.TProxyStartService(configFile.absolutePath, tun.fd)
         hevStarted = true
         addLog("SSH tunnel and TUN bridge are up. SOCKS5 TCP forwarding only")
     }
