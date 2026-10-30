@@ -17,7 +17,6 @@ class ConfigRepository(context:Context) {
     fun importProfile(name:String,content:String)=saveProfile(name,content)
     fun listTweaks():List<TweakProfile>{if(!tweaks.exists())return emptyList(); val a=JSONArray(tweaks.readText()); return (0 until a.length()).map{TweakProfileJsonParser.parse(a.getJSONObject(it).toString())}}
     fun saveTweak(profile:TweakProfile){val all=listTweaks().filterNot{it.name==profile.name}.toMutableList();all.add(profile); val a=JSONArray();all.forEach{a.put(JSONObject().put("name",it.name).put("protocol",it.protocol).put("payload",it.payload).put("sni",it.sni).put("active",it.active))};tweaks.writeText(a.toString(2))}
-    fun addLog(message:String){logFile.appendText("${SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US).format(Date())}  $message
-")}
+    fun addLog(message:String){logFile.appendText("${SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US).format(Date())}  $message\n")}
     fun logs()=if(logFile.exists())logFile.readText() else "No logs yet"
 }
