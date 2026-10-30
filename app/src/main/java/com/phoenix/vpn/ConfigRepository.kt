@@ -51,7 +51,8 @@ class ConfigRepository(context: Context) {
         if(type.equals("wg+ssh",true)){
             val content="# FEED PROFILE: replace both PLACEHOLDER keys and confirm server peer details before connecting.\n[Interface]\nPrivateKey = PLACEHOLDER_REPLACE_WITH_CLIENT_PRIVATE_KEY\nAddress = 10.13.13.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = PLACEHOLDER_REPLACE_WITH_SERVER_PUBLIC_KEY\nEndpoint = $host:51820\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n"
             File(profiles,name.trim()+".conf").writeText(content)
-        }else{
+        }
+        if(type.equals("node",true)||type.equals("wg+ssh",true)){
             val content=JSONObject().put("host",host).put("port",port).put("username","REPLACE_WITH_SSH_USERNAME").put("password","REPLACE_WITH_SSH_PASSWORD").put("payload","").put("sniffedHost","").put("protocol",TunnelProtocol.SSH_DIRECT.name).put("feedNote","Replace username and password before connecting").toString(2)
             File(profiles,name.trim()+".ssh").writeText(content)
         }
