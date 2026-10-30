@@ -11,6 +11,9 @@ android {
 }
 
 dependencies {
+    configurations.all {
+        resolutionStrategy { force("androidx.core:core:1.13.1"); force("androidx.core:core-ktx:1.13.1") }
+    }
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation("com.wireguard.android:tunnel:1.0.20260102")
     implementation("com.hierynomus:sshj:0.38.0")
