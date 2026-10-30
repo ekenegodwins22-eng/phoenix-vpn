@@ -5,8 +5,10 @@ PhoenixTunnel is a personal Android VPN client project. The Android application 
 ## Features
 
 - WireGuard configuration parsing, file-based profiles, and VPN service foundation.
+- SSH DIRECT, SSH SSL/TLS, and SSH SSL/PAYLOAD use sshj password authentication, a local SOCKS5 TCP forwarder, and the hev TUN-to-SOCKS bridge. SSH host keys use first-use pinning, so verify the displayed fingerprint with the server operator before relying on it.
+- SSH TUN routing is IPv4 and SOCKS TCP only. UDP/QUIC and IPv6 are not tunneled by this configuration.
+- DNSTT, V2Ray, and Hysteria remain stubs and are not working tunnel modes.
 - Tweak-profile JSON storage and `vmess://` / `vless://` URI inspection.
-- Protocol selector scaffolding for SSH, V2Ray, and Hysteria. Those non-WireGuard engines are stubs and log `engine not yet implemented`.
 - Purple dark UI, profile import/paste, logs, Android 12 splash screen, and Phoenix flame launcher artwork.
 - GitHub Actions debug APK build on pushes to `main`.
 
@@ -28,4 +30,4 @@ Sample profiles are in `configs/samples/`. All keys and endpoints are placeholde
 
 ## Scope and security
 
-Only WireGuard has an implemented engine path. Do not treat the SSH, V2Ray, or Hysteria protocol options as working tunnels. The sample carrier tweak data is a template and is not a guarantee of carrier access or free data. No infrastructure is provisioned by this repository build workflow.
+Only the SSH modes listed above and WireGuard have an implemented engine path. The sample carrier tweak data is a template and is not a guarantee of carrier access or free data. No infrastructure is provisioned by this repository build workflow.

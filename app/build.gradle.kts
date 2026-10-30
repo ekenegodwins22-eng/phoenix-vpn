@@ -13,6 +13,8 @@ android {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation("com.wireguard.android:tunnel:1.0.20260102")
+    implementation("com.hierynomus:sshj:0.38.0")
+    implementation("com.zaneschepke:hevtunnel:1.0.1")
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
