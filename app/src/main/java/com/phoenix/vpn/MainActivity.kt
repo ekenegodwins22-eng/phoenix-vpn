@@ -83,7 +83,7 @@ private fun hasNetwork():Boolean{val manager=getSystemService(android.content.Co
             connection=(java.net.URL(feedUrl).openConnection() as java.net.HttpURLConnection).apply{connectTimeout=10000;readTimeout=15000;requestMethod="GET";setRequestProperty("Accept","application/json")}
             if(connection.responseCode !in 200..299)throw java.io.IOException("Feed request failed (${connection.responseCode})")
             val json=JSONObject(connection.inputStream.bufferedReader().use{it.readText()});val servers=json.getJSONArray("servers");val tweaks=json.getJSONArray("tweaks");var serverCount=0;var tweakCount=0
-            for(i in 0 until servers.length()){val server=servers.getJSONObject(i);repo.saveFeedServer(server.getString("name"),server.getString("host"),server.getInt("port"),server.optString("type","node"));serverCount++}
+            for(i in 0 until servers.length()){val server=servers.getJSONObject(i);repo.saveFeedServer(server.getString("name"),server.getString("host"),server.getInt("port"),server.optString("type","node"),server.optJSONObject("wg"));serverCount++}
             for(i in 0 until tweaks.length()){val tweak=tweaks.getJSONObject(i);repo.saveTweak(TweakProfileJsonParser.parse(tweak.toString()));tweakCount++}
             runOnUiThread{if(showResult)toast("Loaded $serverCount servers, $tweakCount tweaks");if(currentScreen=="Servers")showServers()}
         }catch(e:Exception){if(showResult)runOnUiThread{toast("Update failed: ${e.message?:"check your connection"}")}}finally{connection?.disconnect()}},"Phoenix-feed-update").apply{isDaemon=true;start()}

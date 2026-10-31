@@ -49,9 +49,16 @@ class ConfigRepository(context: Context) {
         }
     }
 
-    fun saveFeedServer(name:String,host:String,port:Int,type:String){
+    fun saveFeedServer(name:String,host:String,port:Int,type:String,wg:JSONObject?=null){
         require(name.matches(Regex("[A-Za-z0-9 _.-]{1,48}"))) { "Use a simple profile name" }
         require(host.isNotBlank() && port in 1..65535) { "Invalid server from feed" }
+        if(wg!=null){
+            val epPort=wg.optInt("endpoint_port",51820)
+            val conf="[Interface]\nPrivateKey = ${wg.getString("client_private_key")}\nAddress = ${wg.optString("address","10.13.13.2/32")}\nDNS = ${wg.optString("dns","1.1.1.1")}\n\n[Peer]\nPublicKey = ${wg.getString("server_public_key")}\nEndpoint = $host:$epPort\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n"
+            WireGuardConfigParser.parse(conf)
+            File(profiles,name.trim()+".conf").writeText(conf)
+            return
+        }
         if(type.equals("wg+ssh",true)){
             val content="# FEED PROFILE: replace both PLACEHOLDER keys and confirm server peer details before connecting.\n[Interface]\nPrivateKey = PLACEHOLDER_REPLACE_WITH_CLIENT_PRIVATE_KEY\nAddress = 10.13.13.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = PLACEHOLDER_REPLACE_WITH_SERVER_PUBLIC_KEY\nEndpoint = $host:51820\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n"
             File(profiles,name.trim()+".conf").writeText(content)

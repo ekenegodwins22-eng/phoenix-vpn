@@ -1,14 +1,66 @@
 {
   "servers": [
-    {"name": "Sweden-1", "host": "13.63.45.88", "port": 22, "type": "wg+ssh"},
-    {"name": "Sweden-2", "host": "13.60.250.113", "port": 22, "type": "node"},
-    {"name": "Sweden-3", "host": "16.171.43.112", "port": 22, "type": "node"}
+    {
+      "name": "Sweden-1",
+      "host": "13.63.45.88",
+      "port": 22,
+      "type": "wg",
+      "wg": {
+        "client_private_key": "6HQe25dX9yPSgHyaRNUg+oxeH1vCU5uBuhwTz5/CIlk=",
+        "server_public_key": "VCwIUOoDAlNLgoaT35sgmkWaP6nXN7b7twAZnZQZ3X8=",
+        "endpoint_port": 51820,
+        "address": "10.13.13.2/32",
+        "dns": "1.1.1.1"
+      }
+    },
+    {
+      "name": "Sweden-2",
+      "host": "13.60.250.113",
+      "port": 22,
+      "type": "node"
+    },
+    {
+      "name": "Sweden-3",
+      "host": "16.171.43.112",
+      "port": 22,
+      "type": "node"
+    }
   ],
   "tweaks": [
-    {"name": "YouTube Music", "host": "music.youtube.com", "port": 443, "protocol": "SSH_DIRECT", "payload": ""},
-    {"name": "WhatsApp", "host": "web.whatsapp.com", "port": 443, "protocol": "SSH_DIRECT", "payload": ""},
-    {"name": "Wikipedia", "host": "en.m.wikipedia.org", "port": 443, "protocol": "SSH_DIRECT", "payload": ""},
-    {"name": "Free FB", "host": "free.facebook.com", "port": 443, "protocol": "SSH_DIRECT", "payload": ""},
-    {"name": "Classroom", "host": "classroom.google.com", "port": 443, "protocol": "SSH_DIRECT", "payload": ""}
+    {
+      "name": "YouTube Music",
+      "host": "music.youtube.com",
+      "port": 443,
+      "protocol": "SSH_DIRECT",
+      "payload": ""
+    },
+    {
+      "name": "WhatsApp",
+      "host": "web.whatsapp.com",
+      "port": 443,
+      "protocol": "SSH_DIRECT",
+      "payload": ""
+    },
+    {
+      "name": "Wikipedia",
+      "host": "en.m.wikipedia.org",
+      "port": 443,
+      "protocol": "SSH_DIRECT",
+      "payload": ""
+    },
+    {
+      "name": "Free FB",
+      "host": "free.facebook.com",
+      "port": 443,
+      "protocol": "SSH_DIRECT",
+      "payload": ""
+    },
+    {
+      "name": "Classroom",
+      "host": "classroom.google.com",
+      "port": 443,
+      "protocol": "SSH_DIRECT",
+      "payload": ""
+    }
   ]
 }
