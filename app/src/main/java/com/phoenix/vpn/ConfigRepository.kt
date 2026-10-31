@@ -15,6 +15,10 @@ class ConfigRepository(context: Context) {
     private val profiles = File(root, "profiles").apply { mkdirs() }
     private val tweaks = File(root, "tweaks.json")
     private val logFile = File(root, "tunnel.log")
+    private val selFile = File(root, "selected.txt")
+
+    fun selectedProfile(): String? = if (selFile.exists()) selFile.readText().trim().ifEmpty { null } else null
+    fun selectProfile(name: String) { selFile.writeText(name) }
 
     fun listProfiles(): List<TunnelDocument> {
         val files = profiles.listFiles { f -> f.extension == "conf" || f.extension == "ssh" } ?: return emptyList()
