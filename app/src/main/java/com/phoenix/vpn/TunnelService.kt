@@ -43,7 +43,7 @@ class TunnelService : VpnService() {
                 if (protocol == TunnelProtocol.WIREGUARD) {
                     val config = Config.parse(ByteArrayInputStream(source.toByteArray()))
                     addLog("starting tunnel service")
-                    addLog("Routes: " + (config.peers.firstOrNull()?.allowedIPs?.joinToString(", "){ it.toString() } ?: "0.0.0.0/0"))
+                    addLog("Routes: " + (Regex("AllowedIPs\\s*=\\s*(.+)").find(source)?.groupValues?.get(1)?.trim() ?: "0.0.0.0/0"))
                     backend.setState(activeTunnel, Tunnel.State.UP, config)
                     addLog("WireGuard tunnel is up")
                 } else {
