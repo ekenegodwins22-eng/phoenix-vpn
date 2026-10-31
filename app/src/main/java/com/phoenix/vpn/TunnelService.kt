@@ -48,7 +48,7 @@ class TunnelService : VpnService() {
                     addLog("WireGuard tunnel is up")
                     addLog("waiting for handshake with server ...")
                     var handshook=false
-                    for(t in 0 until 15){Thread.sleep(1000);val st=backend.getStatistics();val rx=st.statistics(activeTunnel).orEmpty().values.sumOf{it.totalRx};val hs=st.statistics(activeTunnel).orEmpty().values.any{it.isHandshakeComplete};if(hs||rx>0){handshook=true;break};if(t==4)addLog("still handshaking ...")}
+                    for(t in 0 until 12){Thread.sleep(1000);val ok=try{java.net.Socket().use{sk->sk.connect(java.net.InetSocketAddress("1.1.1.1",443),2000);true}}catch(e:Exception){false};if(ok){handshook=true;break};if(t==3)addLog("still handshaking ...")}
                     if(handshook){addLog("Handshake confirmed with server");notifyUp()}else{addLog("No handshake from server. Check your data connection or server status");notifyDown();backend.setState(activeTunnel, Tunnel.State.DOWN, null);stopSelf();return@Thread}
                 } else {
                     startSshTunnel(protocol, source)
