@@ -42,14 +42,16 @@ class MainActivity:AppCompatActivity(){
         root.addView(statsLabel);statsRun=true;tickStats()
         root.addView(sectionLabel("SELECT SERVER"))
         val activeP=repo.selectedProfile()?.let{n->repo.listProfiles().firstOrNull{it.name==n}}
-        root.addView(creebRow("🏠","BEST SERVER",activeP?.name?:"no profile yet — add one"){showServers()})
+        root.addView(creebRow("🏠","BEST SERVER",activeP?.name?:"tap to pick server"){serverSheet()})
         root.addView(sectionLabel("SELECT NETWORK"))
         val activeT=repo.listTweaks().firstOrNull{it.active}
-        root.addView(creebRow("🇳🇬",activeT?.name?:"no tweak — UPDATE TWEAKS",activeT?.protocol?:""){showNetworks()})
+        root.addView(creebRow("🇳🇬",activeT?.name?:"tap to pick network",activeT?.protocol?:""){networkSheet()})
         root.addView(button("UPDATE TWEAKS"){updateFeed(true)})
         root.addView(button("menu  •  servers  •  configs  •  logs"){drawer()})
     }
-    private fun sectionLabel(s:String):TextView=text(s,14,true).apply{setPadding(8,26,8,8)}
+    private fun serverSheet(){val profiles=repo.listProfiles();if(profiles.isEmpty()){toast("No servers yet — press UPDATE TWEAKS");return};val sel=repo.selectedProfile();darkDialog(this).setTitle("SELECT SERVER").setItems(profiles.map{if(it.name==sel)"✓ ${it.name}" else it.name}.toTypedArray()){_,i->val p=profiles[i];repo.selectProfile(p.name);repo.addLog("Selected server ${p.name}");toast("${p.name} selected");if(currentScreen=="PhoenixTunnel")showHome() else showServers()}.show()}
+    private fun networkSheet(){val tweaks=repo.listTweaks();if(tweaks.isEmpty()){toast("No networks yet — press UPDATE TWEAKS");return};darkDialog(this).setTitle("SELECT NETWORK").setItems(tweaks.map{if(it.active)"✓ ${it.name}" else it.name}.toTypedArray()){_,i->val t=tweaks[i];repo.saveTweak(t.copy(active=true));repo.addLog("Activated network ${t.name}");toast("${t.name} selected");if(currentScreen=="PhoenixTunnel")showHome() else showNetworks()}.show()}
+private fun sectionLabel(s:String):TextView=text(s,14,true).apply{setPadding(8,26,8,8)}
     private fun creebRow(icon:String,title:String,sub:String,action:()->Unit):View{val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(26,24,26,24);background=android.graphics.drawable.GradientDrawable().apply{setColor(0xff26183b.toInt());cornerRadius=26f};layoutParams=LinearLayout.LayoutParams(-1,-2).apply{setMargins(0,10,0,10)};setOnClickListener{action()}}
         row.addView(text(icon,26,false).apply{setPadding(0,0,26,0)})
         val col=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
