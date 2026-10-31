@@ -109,4 +109,6 @@ class ConfigRepository(context: Context) {
     }
 
     fun logs(): String = if (logFile.exists()) logFile.readText() else "No logs yet"
+
+    fun clearLogs() { logFile.writeText("") }
 }
