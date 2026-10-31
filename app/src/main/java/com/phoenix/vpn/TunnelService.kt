@@ -42,6 +42,8 @@ class TunnelService : VpnService() {
                 val protocol = protocolName?.let { TunnelProtocol.valueOf(it) } ?: TunnelProtocol.WIREGUARD
                 if (protocol == TunnelProtocol.WIREGUARD) {
                     val config = Config.parse(ByteArrayInputStream(source.toByteArray()))
+                    addLog("starting tunnel service")
+                    addLog("Routes: " + config.peers.firstOrNull()?.routes?.joinToString(", "){it.toString()} ?: "0.0.0.0/0")
                     backend.setState(activeTunnel, Tunnel.State.UP, config)
                     addLog("WireGuard tunnel is up")
                 } else {
@@ -63,6 +65,7 @@ class TunnelService : VpnService() {
         val engine = TunnelEngines.forProtocol(protocol, this, { socket -> protect(socket) }, ::addLog) as SshEngine
         sshEngine = engine
         engine.connect(source)
+        addLog("Connected. starting tunnel service")
         addLog("Configuring Android TUN interface")
         val tun = Builder()
             .setSession("PhoenixTunnel SSH")
@@ -89,7 +92,8 @@ class TunnelService : VpnService() {
         addLog("Starting hev TUN-to-SOCKS bridge on 127.0.0.1:${engine.socksPort}")
         TProxyService.TProxyStartService(configFile.absolutePath, tun.fd)
         hevStarted = true
-        addLog("SSH tunnel and TUN bridge are up. SOCKS5 TCP forwarding only")
+        addLog("tun2socks started")
+        addLog("Tunnel fully up. TCP forwarding active")
     }
 
     private fun addLog(message: String) { ConfigRepository(this).addLog(message) }
@@ -117,9 +121,11 @@ class TunnelService : VpnService() {
     }
 
     override fun onDestroy() {
+        addLog("stopping tunnel service")
         if (hevStarted) try { TProxyService.TProxyStopService() } catch (e: Exception) { addLog("hev stop failed: ${e.message}") }
         hevStarted = false
         try { vpnInterface?.close() } catch (_: Exception) { }
+        addLog("closing VPN interface")
         vpnInterface = null
         sshEngine?.disconnect()
         sshEngine = null

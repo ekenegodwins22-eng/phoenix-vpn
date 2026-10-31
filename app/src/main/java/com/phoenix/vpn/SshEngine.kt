@@ -43,6 +43,7 @@ class SshEngine(
         val profile = SshProfile.parse(config)
         stopped.set(false)
         log("Connecting SSH to ${profile.host}:${profile.port}")
+        log("Injecting")
         val ssh = SSHClient()
         ssh.setConnectTimeout(15_000)
         ssh.setTimeout(30_000)
@@ -75,6 +76,10 @@ class SshEngine(
                         transport.getOutputStream().write(bytes)
                         transport.getOutputStream().flush()
                         log("Sent ${bytes.size} payload bytes")
+                        transport.soTimeout = 8000
+                        val resp = try { transport.getInputStream().bufferedReader().readLine() } catch (e: Exception) { null }
+                        transport.soTimeout = 0
+                        if (!resp.isNullOrBlank()) log("Response: ${resp.trim()}")
                     }
                     transport.soTimeout = 0
                     return transport
@@ -91,9 +96,11 @@ class SshEngine(
         })
         try {
             ssh.connect(profile.host, profile.port)
+            log("Server version: ${ssh.serverVersion}")
+            log("Authenticating with password")
             ssh.authPassword(profile.username, profile.password)
             client = ssh
-            log("SSH password authentication succeeded")
+            log("Authenticated")
             startSocksListener(ssh)
             log("Local SOCKS5 proxy listening on 127.0.0.1:$socksPort")
         } catch (e: Exception) {
