@@ -1,6 +1,9 @@
 package com.phoenix.vpn
 
+import android.animation.ValueAnimator
 import android.app.Activity
+import android.os.Handler
+import android.os.Looper
 import android.app.AlertDialog
 import android.content.Intent
 import android.net.VpnService
@@ -20,7 +23,44 @@ class MainActivity:AppCompatActivity(){
     private val importDoc=registerForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{try{val text=contentResolver.openInputStream(it)?.bufferedReader()?.readText().orEmpty();showImport(text)}catch(e:Exception){toast("Import failed: ${e.message}")}}}
     override fun onCreate(savedInstanceState:Bundle?){installSplashScreen();super.onCreate(savedInstanceState);repo=ConfigRepository(this);window.statusBarColor=0xff120b22.toInt();showHome();updateFeed(showResult=false)}
     private fun base(title:String){currentScreen=title;root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(20,16,20,20);setBackgroundColor(0xff120b22.toInt())}; val bar=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL}; val menu=button("☰"){drawer()};val heading=text(title,22,true);bar.addView(menu);bar.addView(heading,LinearLayout.LayoutParams(0,-2,1f));bar.addView(text("v1",12,true));root.addView(bar);val sc=ScrollView(this);sc.addView(root);setContentView(sc)}
-    private fun showHome(){base("PhoenixTunnel");root.addView(text("CONFIG v1.0  •  LOCAL",12,true));root.addView(card("${if(connected)"CONNECTED" else "DISCONNECTED"}\n↓ 0 KB/s      ↑ 0 KB/s\nSession  ${if(connected)"active" else "--:--"}"));root.addView(button(if(connected)"DISCONNECT" else "CONNECT",true){toggle()});root.addView(text("HOME     •     LOGS",14,true));root.addView(button("Home"){showHome()});root.addView(button("Logs"){showLogs()});root.addView(button("Servers"){showServers()});root.addView(button("Networks / tweak profiles"){showNetworks()});root.addView(button("Create Config"){showCreate()});root.addView(button("Import Config"){importDoc.launch(arrayOf("text/*","application/octet-stream"))});root.addView(button("Paste config"){showImport("")});root.addView(button("V2Ray URI Converter"){showConverter()});root.addView(button("Settings"){base("Settings");root.addView(text("PhoenixTunnel preferences",16,false))});root.addView(button("About"){base("About");root.addView(text("PhoenixTunnel personal VPN client",16,false))})}
+    private var baseRx=0L; private var baseTx=0L; private var connectAt=0L; private var statsRun=false
+    private var halo:View?=null; private var statsLabel:TextView?=null; private var stateLabel:TextView?=null; private var anim:ValueAnimator?=null
+    private fun showHome(){base("PhoenixTunnel")
+        val status=text("STATUS :",15,false).apply{gravity=Gravity.CENTER}
+        stateLabel=text(if(connected)"Connected" else "Disconnected",20,true).apply{gravity=Gravity.CENTER;setTextColor(if(connected)0xff2e9e4f.toInt() else 0xffb9a8d8.toInt())}
+        root.addView(status);root.addView(stateLabel)
+        val dp=resources.displayMetrics.density
+        val wrap=FrameLayout(this);wrap.layoutParams=LinearLayout.LayoutParams(-1,(250*dp).toInt())
+        val haloV=View(this).apply{background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(if(connected)0x331e8e3e.toInt() else 0x22ffffff.toInt())};layoutParams=FrameLayout.LayoutParams((230*dp).toInt(),(230*dp).toInt(),Gravity.CENTER)}
+        val circleV=View(this).apply{background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(if(connected)0xff1e8e3e.toInt() else 0xff382553.toInt())};layoutParams=FrameLayout.LayoutParams((170*dp).toInt(),(170*dp).toInt(),Gravity.CENTER)}
+        val glyph=text("",0,false).apply{text=if(connected)"STOP" else "GO";textSize=26f;setTextColor(-1);setTypeface(null,1);gravity=Gravity.CENTER}
+        wrap.addView(haloV);wrap.addView(circleV);wrap.addView(glyph,FrameLayout.LayoutParams((170*dp).toInt(),(170*dp).toInt(),Gravity.CENTER))
+        wrap.setOnClickListener{if(anim==null)startPulse(haloV);toggle()}
+        root.addView(wrap);halo=haloV;startPulse(haloV)
+        statsLabel=text("",14,true).apply{gravity=Gravity.CENTER}
+        root.addView(statsLabel);statsRun=true;tickStats()
+        root.addView(sectionLabel("SELECT SERVER"))
+        val activeP=repo.listProfiles().firstOrNull()
+        root.addView(creebRow("🏠","BEST SERVER",activeP?.name?:"no profile yet — add one"){showServers()})
+        root.addView(sectionLabel("SELECT NETWORK"))
+        val activeT=repo.listTweaks().firstOrNull{it.active}
+        root.addView(creebRow("🇳🇬",activeT?.name?:"no tweak — UPDATE TWEAKS",activeT?.protocol?:""){showNetworks()})
+        root.addView(button("UPDATE TWEAKS"){updateFeed(true)})
+        root.addView(button("menu  •  servers  •  configs  •  logs"){drawer()})
+    }
+    private fun sectionLabel(s:String):TextView=text(s,14,true).apply{setPadding(8,26,8,8)}
+    private fun creebRow(icon:String,title:String,sub:String,action:()->Unit):View{val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(26,24,26,24);background=android.graphics.drawable.GradientDrawable().apply{setColor(0xff26183b.toInt());cornerRadius=26f};layoutParams=LinearLayout.LayoutParams(-1,-2).apply{setMargins(0,10,0,10)};setOnClickListener{action()}}
+        row.addView(text(icon,26,false).apply{setPadding(0,0,26,0)})
+        val col=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+        col.addView(text(title,17,true).apply{setPadding(0,0,0,2)});col.addView(text(sub,12,false))
+        row.addView(col);return row}
+    private fun startPulse(v:View){anim?.cancel();val a=ValueAnimator.ofFloat(0.85f,1.15f).apply{duration=1100;repeatCount=ValueAnimator.INFINITE;repeatMode=ValueAnimator.REVERSE;addUpdateListener{val f=it.animatedValue as Float;v.scaleX=f;v.scaleY=f}};a.start();anim=a}
+    private fun tickStats(){val l=statsLabel?:return;if(currentScreen!="PhoenixTunnel"){statsRun=false;return}
+        if(connected){val rx=(android.net.TrafficStats.getTotalRxBytes()-baseRx).coerceAtLeast(0);val tx=(android.net.TrafficStats.getTotalTxBytes()-baseTx).coerceAtLeast(0);val mins=(System.currentTimeMillis()-connectAt)/60000
+            l.text="↓ ${kb(rx)}   ↑ ${kb(tx)}   •   session ${mins}m"}
+        else{l.text="not connected"}
+        Handler(Looper.getMainLooper()).postDelayed({if(statsRun)tickStats()},1000)}
+    private fun kb(b:Long):String=if(b>=1048576)"%.1f MB".format(b/1048576f) else "${b/1024} kB"
     private fun drawer(){val choices=arrayOf("Home","Servers","UPDATE TWEAKS","Networks","Create Config","Import Config","V2Ray URI Converter","Tweak Lab","Logs","Settings","About");darkDialog(this).setTitle("PhoenixTunnel").setItems(choices){_,i->when(i){0->showHome();1->showServers();2->updateFeed(true);3->showNetworks();4->showCreate();5->importDoc.launch(arrayOf("*/*"));6->showConverter();7->showLab();8->showLogs();else->{base(choices[i]);root.addView(text(choices[i],18,true))}}}.show()}
     private fun showServers(){base("Servers");root.addView(button("UPDATE TWEAKS"){updateFeed(showResult=true)});root.addView(button("＋ Add server profile"){showCreate()});repo.listProfiles().forEach{p->val row=LinearLayout(this);val note=if(p.protocol==TunnelProtocol.WIREGUARD&&p.content.contains("PLACEHOLDER"))"  •  keys need replacing" else "";row.addView(text("${p.name}  •  ${p.protocol.label}$note",16,true),LinearLayout.LayoutParams(0,-2,1f));row.addView(button("Delete"){repo.deleteProfile(p.name);repo.addLog("Deleted profile ${p.name}");showServers()});root.addView(row);root.addView(button("Edit / view"){if(p.protocol==TunnelProtocol.WIREGUARD)showImport(p.content,p.name)else{base("${p.name} SSH profile");root.addView(text(p.content,14,false))}})};if(repo.listProfiles().isEmpty())root.addView(text("No profiles yet",16,false))}
     private fun hasNetwork():Boolean{val manager=getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager;val network=manager.activeNetwork?:return false;val caps=manager.getNetworkCapabilities(network)?:return false;return caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)||caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR)}
@@ -77,7 +117,7 @@ class MainActivity:AppCompatActivity(){
     private fun showImport(content:String,name:String="Imported"){base("Import Config");val input=EditText(this).apply{setText(content);minLines=10;gravity=Gravity.TOP};val n=EditText(this).apply{hint="Profile name";setText(name)};root.addView(text("Paste a WireGuard .conf profile",14,false));root.addView(n);root.addView(input);root.addView(button("Validate and import",true){try{repo.importProfile(n.text.toString(),input.text.toString());repo.addLog("Imported profile ${n.text}");toast("Imported");showServers()}catch(e:Exception){toast("Import rejected: ${e.message}")}})}
     private fun showConverter(){base("V2Ray URI Converter");val input=edit("vmess:// or vless://");root.addView(input);root.addView(button("Convert / inspect",true){try{val c=V2RayUriParser.parse(input.text.toString());root.addView(card("${c.protocol.uppercase()}  ${c.server}:${c.port}\nID: ${c.id}\nNetwork: ${c.network}  TLS: ${c.tls}"))}catch(e:Exception){toast("Invalid URI: ${e.message}")}})}
     private fun showLogs(){base("Logs");root.addView(text("HOME     •     LOGS",14,true));root.addView(button("Home"){showHome()});root.addView(text(repo.logs(),14,false))}
-    private fun toggle(){if(connected){stopService(Intent(this,TunnelService::class.java));connected=false;repo.addLog("Disconnected");showHome();return};val profile=repo.listProfiles().firstOrNull();if(profile==null){toast("Import or create a profile first");return};val consent=VpnService.prepare(this);if(consent!=null)startActivityForResult(consent,9) else startTunnel(profile)}
+    private fun toggle(){if(connected){stopService(Intent(this,TunnelService::class.java));connected=false;repo.addLog("Disconnected");showHome();return};val profile=repo.listProfiles().firstOrNull();if(profile==null){toast("Import or create a profile first");return};baseRx=android.net.TrafficStats.getTotalRxBytes();baseTx=android.net.TrafficStats.getTotalTxBytes();connectAt=System.currentTimeMillis();val consent=VpnService.prepare(this);if(consent!=null)startActivityForResult(consent,9) else{startTunnel(profile);connected=true;repo.addLog("Connected via ${profile.name}");showHome()}}
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){super.onActivityResult(requestCode,resultCode,data);if(requestCode==9&&resultCode==Activity.RESULT_OK)repo.listProfiles().firstOrNull()?.let{startTunnel(it)}}
     private fun startTunnel(profile:TunnelDocument){ContextCompat.startForegroundService(this,Intent(this,TunnelService::class.java).putExtra(TunnelService.EXTRA_CONFIG,profile.content).putExtra(TunnelService.EXTRA_PROTOCOL,profile.protocol.name));connected=true;started=System.currentTimeMillis();repo.addLog("Connect requested for ${profile.protocol.label}");showHome()}
 
