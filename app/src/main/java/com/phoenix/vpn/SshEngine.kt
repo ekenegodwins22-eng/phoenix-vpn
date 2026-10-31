@@ -96,7 +96,6 @@ class SshEngine(
         })
         try {
             ssh.connect(profile.host, profile.port)
-            log("Server version: ${ssh.serverVersion}")
             log("Authenticating with password")
             ssh.authPassword(profile.username, profile.password)
             client = ssh
