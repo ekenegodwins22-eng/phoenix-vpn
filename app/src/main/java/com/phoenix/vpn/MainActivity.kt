@@ -74,7 +74,19 @@ class MainActivity:AppCompatActivity(){
         if(repo.listProfiles().isEmpty())root.addView(text("no servers yet — press UPDATE TWEAKS",15,false))
         root.addView(button("＋ create / import profile"){drawer()})}
     private fun selFileDel(){val f=java.io.File(java.io.File(filesDir,"phoenix"),"selected.txt");if(f.exists())f.delete()}
-private fun showNetworks(){base("Networks");repo.listTweaks().forEach{p->root.addView(button("${if(p.active)"✓ " else ""}${p.name}  ·  ${p.protocol}"){repo.saveTweak(p.copy(active=true));repo.addLog("Activated tweak ${p.name}");showNetworks()})};root.addView(button("Add tweak profile"){tweakEditor()})}
+private fun hasNetwork():Boolean{val manager=getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager;val network=manager.activeNetwork?:return false;val caps=manager.getNetworkCapabilities(network)?:return false;return caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)||caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR)}
+    private fun updateFeed(showResult:Boolean){
+        if(!hasNetwork()){if(showResult)toast("Offline. Connect to Wi-Fi or mobile data and try again");return}
+        Thread({var connection:java.net.HttpURLConnection?=null;try{
+            connection=(java.net.URL(feedUrl).openConnection() as java.net.HttpURLConnection).apply{connectTimeout=10000;readTimeout=15000;requestMethod="GET";setRequestProperty("Accept","application/json")}
+            if(connection.responseCode !in 200..299)throw java.io.IOException("Feed request failed (${connection.responseCode})")
+            val json=JSONObject(connection.inputStream.bufferedReader().use{it.readText()});val servers=json.getJSONArray("servers");val tweaks=json.getJSONArray("tweaks");var serverCount=0;var tweakCount=0
+            for(i in 0 until servers.length()){val server=servers.getJSONObject(i);repo.saveFeedServer(server.getString("name"),server.getString("host"),server.getInt("port"),server.optString("type","node"));serverCount++}
+            for(i in 0 until tweaks.length()){val tweak=tweaks.getJSONObject(i);repo.saveTweak(TweakProfileJsonParser.parse(tweak.toString()));tweakCount++}
+            runOnUiThread{if(showResult)toast("Loaded $serverCount servers, $tweakCount tweaks");if(currentScreen=="Servers")showServers()}
+        }catch(e:Exception){if(showResult)runOnUiThread{toast("Update failed: ${e.message?:"check your connection"}")}}finally{connection?.disconnect()}},"Phoenix-feed-update").apply{isDaemon=true;start()}
+    }
+    private fun showNetworks(){base("Networks");repo.listTweaks().forEach{p->root.addView(button("${if(p.active)"✓ " else ""}${p.name}  ·  ${p.protocol}"){repo.saveTweak(p.copy(active=true));repo.addLog("Activated tweak ${p.name}");showNetworks()})};root.addView(button("Add tweak profile"){tweakEditor()})}
     private fun tweakEditor(){val name=edit("Profile name");val protocol=edit("Protocol");val payload=edit("Payload with [host], [crlf], [ua]");val box=LinearLayout(this).apply{orientation=1;addView(name);addView(protocol);addView(payload)};darkDialog(this).setTitle("Tweak profile").setView(box).setPositiveButton("Save"){_,_->try{val p=TweakProfileJsonParser.parse(JSONObject().put("name",name.text.toString()).put("protocol",protocol.text.toString()).put("payload",payload.text.toString()).toString());repo.saveTweak(p);showNetworks()}catch(e:Exception){toast(e.message?:"Invalid tweak")}}.setNegativeButton("Cancel",null).show()}
     private fun showCreate(){
         base("Create Config")
