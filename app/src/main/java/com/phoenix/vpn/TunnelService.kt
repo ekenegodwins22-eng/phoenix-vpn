@@ -46,7 +46,10 @@ class TunnelService : VpnService() {
                     addLog("Routes: " + (Regex("AllowedIPs\\s*=\\s*(.+)").find(source)?.groupValues?.get(1)?.trim() ?: "0.0.0.0/0"))
                     backend.setState(activeTunnel, Tunnel.State.UP, config)
                     addLog("WireGuard tunnel is up")
-                    notifyUp()
+                    addLog("waiting for handshake with server ...")
+                    var handshook=false
+                    for(t in 0 until 15){Thread.sleep(1000);val st=backend.getStatistics();val rx=st.statistics(activeTunnel).orEmpty().values.sumOf{it.totalRx};val hs=st.statistics(activeTunnel).orEmpty().values.any{it.isHandshakeComplete};if(hs||rx>0){handshook=true;break};if(t==4)addLog("still handshaking ...")}
+                    if(handshook){addLog("Handshake confirmed with server");notifyUp()}else{addLog("No handshake from server. Check your data connection or server status");notifyDown();backend.setState(activeTunnel, Tunnel.State.DOWN, null);stopSelf();return@Thread}
                 } else {
                     startSshTunnel(protocol, source)
                 }
@@ -64,10 +67,6 @@ class TunnelService : VpnService() {
         require(protocol == TunnelProtocol.SSH_DIRECT || protocol == TunnelProtocol.SSH_SSL_TLS || protocol == TunnelProtocol.SSH_SSL_PAYLOAD) {
             "${protocol.label} is not implemented"
         }
-        val engine = TunnelEngines.forProtocol(protocol, this, { socket -> protect(socket) }, ::addLog) as SshEngine
-        sshEngine = engine
-        engine.connect(source)
-        addLog("Connected. starting tunnel service")
         addLog("Configuring Android TUN interface")
         val tun = Builder()
             .setSession("PhoenixTunnel SSH")
@@ -76,6 +75,11 @@ class TunnelService : VpnService() {
             .addRoute("0.0.0.0", 0)
             .establish() ?: throw IllegalStateException("Android refused to establish VPN interface")
         vpnInterface = tun
+        addLog("VPN interface ready")
+        val engine = TunnelEngines.forProtocol(protocol, this, { socket -> protect(socket) }, ::addLog) as SshEngine
+        sshEngine = engine
+        engine.connect(source)
+        addLog("Connected. starting tunnel service")
         val yaml = """
             tunnel:
               mtu: 1500
