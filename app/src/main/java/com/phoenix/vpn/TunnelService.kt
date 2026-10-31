@@ -46,12 +46,14 @@ class TunnelService : VpnService() {
                     addLog("Routes: " + (Regex("AllowedIPs\\s*=\\s*(.+)").find(source)?.groupValues?.get(1)?.trim() ?: "0.0.0.0/0"))
                     backend.setState(activeTunnel, Tunnel.State.UP, config)
                     addLog("WireGuard tunnel is up")
+                    notifyUp()
                 } else {
                     startSshTunnel(protocol, source)
                 }
                 getSystemService(NotificationManager::class.java).notify(71, notification("Connected"))
             } catch (e: Exception) {
                 addLog("Tunnel start failed: ${e.message}")
+                notifyDown()
                 stopSelf()
             }
         }.start()
@@ -98,6 +100,14 @@ class TunnelService : VpnService() {
 
     private fun addLog(message: String) { ConfigRepository(this).addLog(message) }
 
+    private fun notifyUp() {
+        sendBroadcast(Intent(ACTION_TUNNEL_UP).setPackage(packageName))
+    }
+
+    private fun notifyDown() {
+        sendBroadcast(Intent(ACTION_TUNNEL_DOWN).setPackage(packageName))
+    }
+
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= 26) {
             getSystemService(NotificationManager::class.java).createNotificationChannel(
@@ -136,5 +146,7 @@ class TunnelService : VpnService() {
     companion object {
         const val EXTRA_CONFIG = "config"
         const val EXTRA_PROTOCOL = "protocol"
+        const val ACTION_TUNNEL_UP = "com.phoenix.vpn.TUNNEL_UP"
+        const val ACTION_TUNNEL_DOWN = "com.phoenix.vpn.TUNNEL_DOWN"
     }
 }
