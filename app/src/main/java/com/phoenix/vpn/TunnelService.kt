@@ -75,9 +75,9 @@ class TunnelService : VpnService() {
                         while (!stopping && System.currentTimeMillis() - handedUpAt < timeoutMs) {
                             Thread.sleep(WG_STATS_POLL_MS)
                             try {
-                                val peers = backend.getStatistics(activeTunnel).peers()
-                                val peerReceived = peers.values.any { it.rxBytes > 0L }
-                                val peerSent = peers.values.any { it.txBytes > 0L }
+                                val stats = backend.getStatistics(activeTunnel)
+                                val peerReceived = stats.peers().any { it.rxBytes > 0L }
+                                val peerSent = stats.peers().any { it.txBytes > 0L }
                                 if (hasWireGuardPeerTraffic(if (peerReceived) 1L else 0L, if (peerSent) 1L else 0L)) {
                                     handshook = true
                                     break
