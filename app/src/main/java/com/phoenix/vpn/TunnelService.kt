@@ -21,9 +21,19 @@ class TunnelService : VpnService() {
     private var sshEngine: SshEngine? = null
     private var vpnInterface: ParcelFileDescriptor? = null
     private var hevStarted = false
+    @Volatile private var stopping = false
+    @Volatile private var connectionThread: Thread? = null
+    @Volatile private var stopThread: Thread? = null
     private val activeTunnel = object : Tunnel {
         override fun getName() = "PhoenixTunnel"
-        override fun onStateChange(newState: Tunnel.State) { addLog("WireGuard state: $newState") }
+        override fun onStateChange(newState: Tunnel.State) {
+            addLog("WireGuard state: $newState")
+            when (newState) {
+                Tunnel.State.UP -> notifyState(STATE_WAITING_HANDSHAKE)
+                Tunnel.State.DOWN -> if (stopping) notifyState(STATE_DISCONNECTED) else notifyDown()
+                else -> Unit
+            }
+        }
     }
 
     override fun onCreate() {
@@ -33,33 +43,79 @@ class TunnelService : VpnService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_TUNNEL_STOP) {
+            stopTunnel()
+            return START_NOT_STICKY
+        }
+        if (connectionThread?.isAlive == true) {
+            addLog("Ignoring duplicate tunnel start while connecting")
+            return START_NOT_STICKY
+        }
+        stopping = false
         startForeground(71, notification("Preparing VPN"))
         val source = intent?.getStringExtra(EXTRA_CONFIG)
         val protocolName = intent?.getStringExtra(EXTRA_PROTOCOL)
         if (source.isNullOrBlank()) { stopSelf(); return START_NOT_STICKY }
-        Thread {
+        notifyState(STATE_CONNECTING)
+        connectionThread = Thread {
             try {
                 val protocol = protocolName?.let { TunnelProtocol.valueOf(it) } ?: TunnelProtocol.WIREGUARD
                 if (protocol == TunnelProtocol.WIREGUARD) {
+                    if (stopping) return@Thread
                     val config = Config.parse(ByteArrayInputStream(source.toByteArray()))
                     addLog("starting tunnel service")
                     addLog("Routes: " + (Regex("AllowedIPs\\s*=\\s*(.+)").find(source)?.groupValues?.get(1)?.trim() ?: "0.0.0.0/0"))
+                    notifyState(STATE_WAITING_HANDSHAKE)
                     backend.setState(activeTunnel, Tunnel.State.UP, config)
-                    addLog("WireGuard tunnel is up")
-                    addLog("waiting for handshake with server ...")
-                    var handshook=false
-                    for(t in 0 until 12){Thread.sleep(1000);val ok=try{java.net.Socket().use{sk->sk.connect(java.net.InetSocketAddress("1.1.1.1",443),2000);true}}catch(e:Exception){false};if(ok){handshook=true;break};if(t==3)addLog("still handshaking ...")}
-                    if(handshook){addLog("Handshake confirmed with server");notifyUp()}else{addLog("No handshake from server. Check your data connection or server status");notifyDown();backend.setState(activeTunnel, Tunnel.State.DOWN, null);stopSelf();return@Thread}
+                    addLog("WireGuard tunnel interface is up; waiting for peer handshake")
+                    val handedUpAt = System.currentTimeMillis()
+                    val timeoutMs = WG_HANDSHAKE_TIMEOUT_MS
+                    var handshook = false
+                    try {
+                        while (!stopping && System.currentTimeMillis() - handedUpAt < timeoutMs) {
+                            Thread.sleep(WG_STATS_POLL_MS)
+                            try {
+                                val stats = backend.getStatistics(activeTunnel)
+                                val peers = stats.peers()
+                                if (hasWireGuardPeerTraffic(if (peers.isNotEmpty()) 1L else 0L, 0L)) {
+                                    handshook = true
+                                    break
+                                }
+                            } catch (e: Exception) {
+                                addLog("WireGuard peer stats unavailable: ${e.message}")
+                            }
+                        }
+                    } catch (e: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                    }
+                    if (handshook && !stopping) {
+                        addLog("WireGuard peer exchanged traffic; tunnel connected")
+                        notifyUp()
+                    } else if (!stopping) {
+                        addLog("WireGuard peer handshake not confirmed before timeout")
+                        notifyDown()
+                        backend.setState(activeTunnel, Tunnel.State.DOWN, null)
+                        stopSelf()
+                        return@Thread
+                    } else {
+                        return@Thread
+                    }
                 } else {
+                    if (stopping) return@Thread
+                    notifyState(STATE_WAITING_HANDSHAKE)
                     startSshTunnel(protocol, source)
+                    if (stopping) { sshEngine?.disconnect(); return@Thread }
+                    notifyUp()
                 }
                 getSystemService(NotificationManager::class.java).notify(71, notification("Connected"))
             } catch (e: Exception) {
                 addLog("Tunnel start failed: ${e.message}")
                 notifyDown()
                 stopSelf()
+            } finally {
+                connectionThread = null
             }
-        }.start()
+        }.apply { name = "PhoenixTunnel-connect"; start() }
         return START_NOT_STICKY
     }
 
@@ -104,11 +160,17 @@ class TunnelService : VpnService() {
 
     private fun addLog(message: String) { ConfigRepository(this).addLog(message) }
 
+    private fun notifyState(state: String) {
+        sendBroadcast(Intent(ACTION_TUNNEL_STATE).setPackage(packageName).putExtra(EXTRA_STATE, state))
+    }
+
     private fun notifyUp() {
+        notifyState(STATE_CONNECTED)
         sendBroadcast(Intent(ACTION_TUNNEL_UP).setPackage(packageName))
     }
 
     private fun notifyDown() {
+        notifyState(STATE_DISCONNECTED)
         sendBroadcast(Intent(ACTION_TUNNEL_DOWN).setPackage(packageName))
     }
 
@@ -125,32 +187,71 @@ class TunnelService : VpnService() {
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+        val stopIntent = PendingIntent.getService(
+            this, 71, Intent(this, TunnelService::class.java).setAction(ACTION_TUNNEL_STOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
         return NotificationCompat.Builder(this, "phoenix_vpn")
             .setSmallIcon(android.R.drawable.stat_sys_warning)
             .setContentTitle("PhoenixTunnel")
             .setContentText(text)
             .setContentIntent(pi)
+            .addAction(android.R.drawable.ic_media_pause, "STOP", stopIntent)
             .setOngoing(true)
             .build()
     }
 
+    private fun stopTunnel() {
+        if (stopThread?.isAlive == true) return
+        stopping = true
+        notifyState(STATE_DISCONNECTING)
+        connectionThread?.interrupt()
+        stopThread = Thread {
+            try { if (::backend.isInitialized) backend.setState(activeTunnel, Tunnel.State.DOWN, null) }
+            catch (e: Exception) { addLog("WireGuard stop failed: ${e.message}") }
+            stopSelf()
+        }
+        stopThread?.name = "PhoenixTunnel-stop"
+        stopThread?.start()
+    }
+
     override fun onDestroy() {
+        stopping = true
+        connectionThread?.interrupt()
+        if (Thread.currentThread() !== connectionThread) connectionThread?.join(5_000)
+        if (Thread.currentThread() !== stopThread) stopThread?.join(5_000)
+        notifyState(STATE_DISCONNECTING)
         addLog("stopping tunnel service")
         if (hevStarted) try { TProxyService.TProxyStopService() } catch (e: Exception) { addLog("hev stop failed: ${e.message}") }
         hevStarted = false
-        try { vpnInterface?.close() } catch (_: Exception) { }
-        addLog("closing VPN interface")
-        vpnInterface = null
         sshEngine?.disconnect()
         sshEngine = null
         try { backend.setState(activeTunnel, Tunnel.State.DOWN, null) } catch (_: Exception) { }
+        try { vpnInterface?.close() } catch (_: Exception) { }
+        addLog("closing VPN interface")
+        vpnInterface = null
+        notifyState(STATE_DISCONNECTED)
         super.onDestroy()
     }
 
     companion object {
+        private const val WG_HANDSHAKE_TIMEOUT_MS = 30_000L
+        private const val WG_STATS_POLL_MS = 1_000L
+
+        fun hasWireGuardPeerTraffic(peerRxBytes: Long, peerTxBytes: Long): Boolean = peerRxBytes > 0L && peerTxBytes > 0L
+        fun isUiStateConnected(state: String): Boolean = state == STATE_CONNECTED
+
         const val EXTRA_CONFIG = "config"
         const val EXTRA_PROTOCOL = "protocol"
+        const val ACTION_TUNNEL_STOP = "com.phoenix.vpn.TUNNEL_STOP"
         const val ACTION_TUNNEL_UP = "com.phoenix.vpn.TUNNEL_UP"
         const val ACTION_TUNNEL_DOWN = "com.phoenix.vpn.TUNNEL_DOWN"
+        const val ACTION_TUNNEL_STATE = "com.phoenix.vpn.TUNNEL_STATE"
+        const val EXTRA_STATE = "state"
+        const val STATE_CONNECTING = "connecting"
+        const val STATE_WAITING_HANDSHAKE = "waiting-handshake"
+        const val STATE_CONNECTED = "connected"
+        const val STATE_DISCONNECTING = "disconnecting"
+        const val STATE_DISCONNECTED = "disconnected"
     }
 }
