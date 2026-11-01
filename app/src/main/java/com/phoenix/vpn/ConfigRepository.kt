@@ -15,6 +15,10 @@ class ConfigRepository(context: Context) {
     private val profiles = File(root, "profiles").apply { mkdirs() }
     private val tweaks = File(root, "tweaks.json")
     private val logFile = File(root, "tunnel.log")
+    private val selFile = File(root, "selected.txt")
+
+    fun selectedProfile(): String? = if (selFile.exists()) selFile.readText().trim().ifEmpty { null } else null
+    fun selectProfile(name: String) { selFile.writeText(name) }
 
     fun listProfiles(): List<TunnelDocument> {
         val files = profiles.listFiles { f -> f.extension == "conf" || f.extension == "ssh" } ?: return emptyList()
@@ -45,17 +49,17 @@ class ConfigRepository(context: Context) {
         }
     }
 
-    fun saveFeedServer(name:String,host:String,port:Int,type:String,config:String?){
+    fun saveFeedServer(name:String,host:String,port:Int,type:String,wg:JSONObject?=null){
         require(name.matches(Regex("[A-Za-z0-9 _.-]{1,48}"))) { "Use a simple profile name" }
         require(host.isNotBlank() && port in 1..65535) { "Invalid server from feed" }
-        if(!config.isNullOrBlank()){
-            WireGuardConfigParser.parse(config)
-            File(profiles,name.trim()+".conf").writeText(config)
+        if(wg!=null){
+            val epPort=wg.optInt("endpoint_port",51820)
+            val conf="[Interface]\nPrivateKey = ${wg.getString("client_private_key")}\nAddress = ${wg.optString("address","10.13.13.2/32")}\nDNS = ${wg.optString("dns","1.1.1.1")}\n\n[Peer]\nPublicKey = ${wg.getString("server_public_key")}\nEndpoint = $host:$epPort\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n"
+            WireGuardConfigParser.parse(conf)
+            File(profiles,name.trim()+".conf").writeText(conf)
             return
         }
         if(type.equals("wg+ssh",true)){
-            if(File(profiles,name.trim()+".conf").exists())return
-        }
             val content="# FEED PROFILE: replace both PLACEHOLDER keys and confirm server peer details before connecting.\n[Interface]\nPrivateKey = PLACEHOLDER_REPLACE_WITH_CLIENT_PRIVATE_KEY\nAddress = 10.13.13.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = PLACEHOLDER_REPLACE_WITH_SERVER_PUBLIC_KEY\nEndpoint = $host:51820\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n"
             File(profiles,name.trim()+".conf").writeText(content)
         }
@@ -105,4 +109,6 @@ class ConfigRepository(context: Context) {
     }
 
     fun logs(): String = if (logFile.exists()) logFile.readText() else "No logs yet"
+
+    fun clearLogs() { logFile.writeText("") }
 }

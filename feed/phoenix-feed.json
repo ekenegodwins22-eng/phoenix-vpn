@@ -10,15 +10,29 @@
       "name": "Sweden-2",
       "host": "13.60.250.113",
       "port": 22,
-      "type": "wg",
-      "config": "[Interface]\nPrivateKey = OH9V/EIv2QkTqkcVOUYQn3ZxGHaMUvCaD6HAgIadiGY=\nAddress = 10.8.1.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = IsMkoXbbYwekyXbTrNMs3JvmDbXTvHUMwziNmeIcvBE=\nEndpoint = 13.60.250.113:51820\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25"
+      "type": "node",
+      "config": "[Interface]\nPrivateKey = OH9V/EIv2QkTqkcVOUYQn3ZxGHaMUvCaD6HAgIadiGY=\nAddress = 10.8.1.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = IsMkoXbbYwekyXbTrNMs3JvmDbXTvHUMwziNmeIcvBE=\nEndpoint = 13.60.250.113:51820\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25",
+      "wg": {
+        "client_private_key": "OH9V/EIv2QkTqkcVOUYQn3ZxGHaMUvCaD6HAgIadiGY=",
+        "server_public_key": "IsMkoXbbYwekyXbTrNMs3JvmDbXTvHUMwziNmeIcvBE=",
+        "address": "10.8.1.2/32",
+        "dns": "1.1.1.1",
+        "endpoint_port": 51820
+      }
     },
     {
       "name": "Sweden-3",
       "host": "16.171.43.112",
       "port": 22,
-      "type": "wg",
-      "config": "[Interface]\nPrivateKey = mLdyz+rqfmUunUjB14himZeB14US8d7UrGOZ59ubRX4=\nAddress = 10.8.2.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = E8krVJcQ164JbVkmn1B8LNsFSXS8Rq/bqWDKIPexLFA=\nEndpoint = 16.171.43.112:51820\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25"
+      "type": "node",
+      "config": "[Interface]\nPrivateKey = mLdyz+rqfmUunUjB14himZeB14US8d7UrGOZ59ubRX4=\nAddress = 10.8.2.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = E8krVJcQ164JbVkmn1B8LNsFSXS8Rq/bqWDKIPexLFA=\nEndpoint = 16.171.43.112:51820\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25",
+      "wg": {
+        "client_private_key": "mLdyz+rqfmUunUjB14himZeB14US8d7UrGOZ59ubRX4=",
+        "server_public_key": "E8krVJcQ164JbVkmn1B8LNsFSXS8Rq/bqWDKIPexLFA=",
+        "address": "10.8.2.2/32",
+        "dns": "1.1.1.1",
+        "endpoint_port": 51820
+      }
     }
   ],
   "tweaks": [
