@@ -17,6 +17,8 @@ jobs:
           gradle-version: '8.9'
       - name: Generate Gradle wrapper
         run: gradle wrapper --gradle-version 8.9
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
       - name: Assemble debug APK
         run: ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
