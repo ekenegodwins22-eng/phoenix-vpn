@@ -66,9 +66,9 @@ class TunnelService : VpnService() {
                     addLog("starting tunnel service")
                     addLog("Routes: " + (Regex("AllowedIPs\\s*=\\s*(.+)").find(source)?.groupValues?.get(1)?.trim() ?: "0.0.0.0/0"))
                     notifyState(STATE_WAITING_HANDSHAKE)
+                    val handshakeStartedAt = System.currentTimeMillis()
                     backend.setState(activeTunnel, Tunnel.State.UP, config)
-                    addLog("WireGuard tunnel interface is up; waiting for peer handshake")
-                    val handedUpAt = System.currentTimeMillis()
+                    addLog("WireGuard tunnel interface is up; waiting for fresh peer handshake and traffic")
                     val timeoutMs = WG_HANDSHAKE_TIMEOUT_MS
                     var handshook = false
                     try {
@@ -76,10 +76,13 @@ class TunnelService : VpnService() {
                             Thread.sleep(WG_STATS_POLL_MS)
                             try {
                                 val stats = backend.getStatistics(activeTunnel)
-                                val peerHandshake = stats.peers().any { peer ->
-                                    (stats.peer(peer)?.latestHandshakeEpochMillis ?: 0L) > 0L
+                                val peerTraffic = stats.peers().any { peer ->
+                                    val peerStats = stats.peer(peer)
+                                    val latestHandshake = peerStats?.latestHandshakeEpochMillis ?: 0L
+                                    isFreshWireGuardHandshake(latestHandshake, handshakeStartedAt) &&
+                                        peerStats != null && hasWireGuardPeerTraffic(peerStats.rxBytes, peerStats.txBytes)
                                 }
-                                if (peerHandshake) {
+                                if (peerTraffic) {
                                     handshook = true
                                     break
                                 }
@@ -91,10 +94,10 @@ class TunnelService : VpnService() {
                         Thread.currentThread().interrupt()
                     }
                     if (handshook && !stopping) {
-                        addLog("WireGuard peer exchanged traffic; tunnel connected")
+                        addLog("Fresh WireGuard handshake and bidirectional peer traffic confirmed")
                         notifyUp()
                     } else if (!stopping) {
-                        addLog("WireGuard peer handshake not confirmed before timeout")
+                        addLog("Fresh WireGuard handshake and bidirectional peer traffic not confirmed before timeout")
                         notifyDown()
                         backend.setState(activeTunnel, Tunnel.State.DOWN, null)
                         stopSelf()
@@ -241,6 +244,8 @@ class TunnelService : VpnService() {
         private const val WG_STATS_POLL_MS = 1_000L
 
         fun hasWireGuardPeerTraffic(peerRxBytes: Long, peerTxBytes: Long): Boolean = peerRxBytes > 0L && peerTxBytes > 0L
+        fun isFreshWireGuardHandshake(handshakeEpochMillis: Long, connectionStartedAtMillis: Long): Boolean =
+            handshakeEpochMillis > 0L && handshakeEpochMillis >= connectionStartedAtMillis
         fun isUiStateConnected(state: String): Boolean = state == STATE_CONNECTED
 
         const val EXTRA_CONFIG = "config"

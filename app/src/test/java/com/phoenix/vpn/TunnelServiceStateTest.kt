@@ -12,6 +12,14 @@ class TunnelServiceStateTest {
         assertTrue(TunnelService.hasWireGuardPeerTraffic(512, 256))
     }
 
+    @Test fun wireGuardHandshakeMustBeFreshForThisConnection() {
+        val start = 1_000L
+        assertFalse(TunnelService.isFreshWireGuardHandshake(999L, start))
+        assertTrue(TunnelService.isFreshWireGuardHandshake(start, start))
+        assertTrue(TunnelService.isFreshWireGuardHandshake(1_001L, start))
+        assertFalse(TunnelService.isFreshWireGuardHandshake(0L, start))
+    }
+
     @Test fun onlyConnectedStateMapsToConnected() {
         assertTrue(TunnelService.isUiStateConnected(TunnelService.STATE_CONNECTED))
         assertFalse(TunnelService.isUiStateConnected(TunnelService.STATE_CONNECTING))
