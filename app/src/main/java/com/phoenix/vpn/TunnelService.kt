@@ -72,7 +72,7 @@ class TunnelService : VpnService() {
                     val timeoutMs = WG_HANDSHAKE_TIMEOUT_MS
                     var handshook = false
                     try {
-                        while (!stopping && System.currentTimeMillis() - handedUpAt < timeoutMs) {
+                        while (!stopping && System.currentTimeMillis() - handshakeStartedAt < timeoutMs) {
                             Thread.sleep(WG_STATS_POLL_MS)
                             try {
                                 val stats = backend.getStatistics(activeTunnel)
